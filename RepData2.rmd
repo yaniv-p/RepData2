@@ -1,3 +1,22 @@
+---
+title: "Most harmful weather events with respect to population health and to economic damage"
+output: 
+  html_document:
+    keep_md: true
+---
+
+#Synopsis
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+In this report we aim to explore the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+We will aim to find the most harmful weather events with respect to population health and to economic damage
+
+#Data processing
+# In general we will d/l and read the raw data into a d.f, filter it for certain years, group it by the EVTYPE, normalize the EVTYPE to the 48 defined in the document, and will summarize population health and economic damage.
+#All the details and code are below
+
+
+#We will load the needed libraries and the data set in below code
+
 ```{r}
 library(stringdist)
 library(stringr)
@@ -6,7 +25,9 @@ library(lubridate)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-# Download the files if its not there
+```
+```{r cache=TRUE}
+# Download the files if it's not there
 if(!file.exists("data")) {
         
         dir.create("data")
@@ -23,172 +44,204 @@ if(!file.exists("data")) {
 
 # read the data
 StromData<-read.csv('data\\repdata-data-StormData.csv')
+```
 
-# we can see the data set has 902,297 entries with 37 varibels
+#Examine the dataset
+```{r}
 dim(StromData)
+```
+# we can see the data set has 902,297 entries with 37 variables
 
-# taking a look at the varibles
+# taking a look at the variables
+```{r}
 names(StromData)
-
-# Get info on varibales
+```
+#Get info on varibales
+```{r}
 str(StromData)
-
-# look at EVTYPE
+```
+#look at EVTYPE
+```{r}
 str(StromData$EVTYPE)
-
-# many values(985) and not the expected 48 per the document.
-# looking at some values
-head(unique(StromData$EVTYPE),50)
-tail(unique(StromData$EVTYPE),50)
-
-# By looking at the document section 7, The most left 9 chanrcters after removing blanks are unique.
-# So remove non ascii charcters, remove blanks and look at first 9 letters from the left side of EVTYPE
+```
+#Many values (985), and not the expected 48 per the document.
+#Looking at some values
+```{r}
+head(unique(StromData$EVTYPE),20)
+tail(unique(StromData$EVTYPE),20)
+```
+#Let's try to decrease the number of Events by removing blanks and etc. :
+#By looking at the document section 7, The most left 9 characters after removing blanks are unique.
+#So let's remove non ASCII characters, remove blanks and look at first 9 letters from the left side of EVTYPE
+```{r}
 length(unique(substr(toupper(str_replace_all(StromData$EVTYPE,"[[:punct:][:space:][:digit:]]","")),1,9)))
-
-# Got 415 entries
-# lets check this number per year
-
+```
+#Got 415 entries instead of 985. Still not close to the 48 defined in the document.
+#Let's check this number per year to see if the year affect this number.
+#We will build a matrix to hold this information
+```{r}
 #convert the date string to a R date and add a varibile of a year
 StromData$BGN_DATE_D<-as.Date(StromData$BGN_DATE,"%m/%d/%Y")
 StromData$year<-year(StromData$BGN_DATE_D)
-
 summary(StromData$year)
-
-# we can see we have data from 1950 to 2011
-
-# Matrix that will continue the number of disctinct EVTYPE per year
-m<-matrix(nrow = 2010-1950+1,ncol = 2,dimnames = list(1950:2010,c('year','EventNum')))
+```
+#we can see we have data from 1950 to 2011
+#We will build the matrix now:
+```{r cache=TRUE}
+m<-matrix(nrow = 2011-1950+1,ncol = 2,dimnames = list(1950:2011,c('year','EventNum')))
 StromFunc <- function(x) 
 {
         tmp<-StromData[StromData$year>x,"EVTYPE"]
         length(unique(substr(toupper(str_replace_all(tmp,"[[:punct:][:space:][:digit:]]","")),1,9)))
 }
 j<-1
-for (i in 1950:2010) 
+for (i in 1950:2011) 
 {
         m[j,1]<-i
         m[j,2]<-StromFunc(i)
         j<-j+1
 } 
-
-plot(m[,1],m[,2])
+```
+#Lets plot the number of EVTYPE per year, I'll add a line in the plot for the 48 mark.
+```{r}
+plot(m[,1],m[,2],xlab = 'Year', ylab = 'Number of disctinct EVTYPE')
 abline(h=48)
-# number get close to the 48 as we are reaching 2011
+```
+ 
+# Number gets close to the 48 as we are reaching 2011
+# Look at the actual matrix values
+```{r}
 m
-# number get close to the 48 from year 2002
-# lets see later how to try and map them to the 48 ones in the document
+```
+#Number gets close to the 48 from year 2002
+#Let's see later how to try and map the EVTYPE to the 48 defined in the document
 
+#Now, Lets look at other variables we will need for the analyze
 
-# look at FATALITIES
+#Look at FATALITIES
+```{r}
 str(StromData$FATALITIES)
 summary(StromData$FATALITIES)
 head(StromData$FATALITIES)
-
-# look at INJURIES
+```
+#Look at INJURIES
+```{r}
 str(StromData$INJURIES)
 summary(StromData$INJURIES)
 head(StromData$INJURIES)
-
-
-# look at PROPDMG
+```
+# Look at PROPDMG
+```{r}
 str(StromData$PROPDMG)
 summary(StromData$PROPDMG)
 head(StromData$PROPDMG)
-
-
-# look at PROPDMGEXP
+```
+# Look at PROPDMGEXP
+```{r}
 str(StromData$PROPDMGEXP)
 summary(StromData$PROPDMGEXP)
 head(StromData$PROPDMGEXP)
-
-# Based on the documnetation -
+```
+#Based on the documentation -
 # "Estimates should be rounded to three significant digits, followed by an alphabetical character 
 # signifying the magnitude of the # number, i.e., 1.55B for $1,550,000,000.
 # Alphabetical characters used to signify magnitude include “K” for thousands, # “M” for millions, 
 # and “B” for billions." 
 
-# look at the PROPDMG of symboles I can't understand the values
+#Let's look at the PROPDMG of symbols I can't understand the values
+```{r}
 StromData[StromData$PROPDMGEXP %in% c('+','-','?'),c("PROPDMG","year","PROPDMGEXP")]
-# only 6 have non zero  values in 1994 and 1995 only. We will assume muliplier is one for them
+```
+# only 6 have non zero values in 1994 and 1995 only. We will assume multiplier is 1 for them
 
-# So to summerize I'll assume the follwing multiplier for the PROPDMGEXP:
-# for null value - just take 1 as the mulitplier
+# So to summarize I'll assume the following multiplier for the PROPDMGEXP:
+# for null value - just take 1 as the multiplier
 # B - 10 ^ 9
 # m/m - 10 ^ 6
 # k - 10 ^ 3
 # h/H - hundreds - 10 ^2
-# numbers 0..9 - 10 ^ (that number 0..9). for example if we get a 1 then the muliplier is 10 ^ 1=10
-# for the 3 charcters -, ? + I'll assume 10 ^ 0( =1)
+# numbers 0..9 - 10 ^ (that number 0..9). for example if we get a 1 then the multiplier is 10 ^ 1=10
+# for the 3 characters -, ? + I'll assume 10 ^ 0( =1)
 
 
-# look at CROPDMG
+#Now look at CROPDMG
+```{r}
 str(StromData$CROPDMG)
 summary(StromData$CROPDMG)
 head(StromData$CROPDMG)
-
-# look at CROPDMGEXP
+```
+#Look at CROPDMGEXP
+```{r}
 str(StromData$CROPDMGEXP)
 summary(StromData$CROPDMGEXP)
 head(StromData$CROPDMGEXP)
-
-# look at the PROPDMG of symboles I can't understand the values
+```
+#Look at the PROPDMG of symbols I can't understand the values
+```{r}
 StromData[StromData$CROPDMGEXP =='?',c("CROPDMG","year")]
-# all are zero value so we can ignore them
+```
+#All are zero value so we can ignore them
 
-# I'll assume the same assuptions as the above for PROPDMGEXP
+#I'll assume the same assumptions as the above for PROPDMGEXP
 
-# add to d.f unified multiplier and callacuate the actual PROPDMG and CROPDMG
+#Add to d.f unified multiplier and calculate the actual PROPDMG and CROPDMG
+```{r}
 Expdf<-data.frame(
 EXP=c('','-','?','+',0:9,'B','m','M','k','K','h','H'),
 Multplier=c(1,0,0,0,10 ^0,10 ^1,10 ^2,10 ^3,10 ^4,10 ^5,10 ^6,10 ^7,10 ^8,10 ^9,10 ^9,10 ^6,10 ^6,10 ^3,10 ^3,10 ^2,10^2))
-
-# merge with the multplier
+```
+# merge with the multiplier
+```{r cache=TRUE}
 StromData<-merge(StromData,Expdf,by.x ='PROPDMGEXP', by.y='EXP')
-
-# calculate the $ value by summing Properity and crops 
-# calculate the number of pepole hurt by summing FATALITIES and INJURIES 
+```
+# Calculate the $ value by summing Property and crops 
+# Calculate the number of people hurt by summing FATALITIES and INJURIES 
+```{r}
 StromData<-mutate(StromData,DMGValue=PROPDMG*Multplier+CROPDMG*Multplier,Population=FATALITIES+INJURIES)
-
-# find the dammges per year in order to check the assignemnt remark
-# "The events in the database start in the year 1950 and end in November 2011. 
+```
+# Find the damages per year in order to check the assignment remark:
+# The events in the database start in the year 1950 and end in November 2011. 
 # In the earlier years of the database there are generally fewer events recorded, 
 # most likely due to a lack of good records. 
-# More recent years should be considered more complete."
-
+# More recent years should be considered more complete.
+# We will do that by building a plot the shows the number of entries, the damage in $ and the public health impact per year
+```{r}
 Totals<-summarise(group_by(StromData,year),totalDMGValue=sum(DMGValue),totalDMGPopulation=sum(Population),count=n())
-
+# only non zero values for Damage value and in population affected is intersting 
 DMGValue<- select(filter(Totals,totalDMGValue>0),year,totalDMGValue,count)
 DMGPopulation<- select(filter(Totals,totalDMGPopulation>0),year,totalDMGPopulation,count)
 p<-merge(DMGPopulation,DMGValue)
-
 # make it tidy
 p<-gather(p, DMGtype, val, -year)
 p$year<-as.Date(paste('01/01/',p$year),"%m/%d/%Y")
 
 qplot(year, val, data = p, geom = "line", group = DMGtype) +
         facet_grid(DMGtype ~ ., scale = "free_y") 
+```
 
-# Based on the plot we can see that the count of events (with non zero DMG value) is starting to grow
-# after 1990, espacly at 1995-2000, so before that there are indded not many records.
-# The Population health has data fron the beging of the period.
-# The economic data has mostely data from 1993 
-# so based on that we can conclude that from around 1993 towards 1995-2000 we have more complete data
-# Based on that we will answer the questions on data from 1997.
+# Based on the plot we can see that the count of events (with non-zero DMG value) is starting to grow
+# after 1990, especially at 1995-2000, so before that there are indeed not many records.
+# The Population health has data from the beginning of the period.
+# The economic data has mostly data from 1993 
+# So based on that we can conclude that from around 1993 towards 1995-2000 we have more complete data
+# To conclude based on the above- we will answer the questions on data from 1997.
 
-# filter the relavent data
+
+#  
+# Filter the relevant data after year 1997
+```{r}
 StromDataPart<-filter(StromData,year>=1997)
 
 # group by EVTYPE
 TotalsPart<-summarise(group_by(StromDataPart,EVTYPE),totalDMGValue=sum(DMGValue),totalDMGPopulation=sum(Population))
 
-# only non zero values for Damage value and in population affected is intersting 
+# only non-zero values for Damage value and in population affected is interesting 
 DMGValuePart<- filter(TotalsPart,totalDMGValue>0)
 DMGPopulationPart<- filter(TotalsPart,totalDMGPopulation>0)
-
-
-# Now try to match the EVTYPE to the ones defined in the document
-
-# the 48 EVTYPES from the document
+```
+#Now try to match the EVTYPE to the ones defined in the document
+```{r}
+#the 48 EVTYPES from the document
 lookup<-c("Astronomical Low Tide", "Avalanche", "Blizzard", 
           "Coastal Flood", "Cold/Wind Chill", "Debris Flow", 
           "Dense Fog", "Dense Smoke", "Drought", "Dust Devil", 
@@ -203,37 +256,41 @@ lookup<-c("Astronomical Low Tide", "Avalanche", "Blizzard",
           "Tornado", "Tropical Depression", "Tropical Storm", "Tsunami", 
           "Volcanic Ash", "Waterspout", "Wildfire", "Winter Storm", 
           "Winter Weather")
-# remove non Alpha charcters, remove blanks. make all uppercase
+# Remove non Alpha characters, remove blanks. Make all uppercase
 lookup1<-toupper(str_replace_all(lookup,"[[:punct:][:space:][:digit:]]",""))
-#lookup2<-unique(substr(lookup1,1,9))
 d<-data.frame(Trans=lookup,l2=lookup1) # build d.f to be used for merge later
 
 # All the Events for non 0 DMG's and population effcted
 EVTypePart<-unique(c(as.character(unique(DMGPopulationPart$EVTYPE)),as.character(unique(DMGValuePart$EVTYPE))))
 
-# remove non Alpha charcters, remove blanks. make all uppercase
+# Remove non Alpha characters, remove blanks. Make all uppercase
 EVTypePart1<-toupper(str_replace_all(EVTypePart,"[[:punct:][:space:][:digit:]]",""))
-#EVTypePart2<-substr(EVTypePart1,1,9)
 EVTypePartdf<-data.frame(origEV=EVTypePart,shortE=EVTypePart1) # build d.f to be used for merge later
 
 # Try to find a match
 a2<-merge(EVTypePartdf,d,by.x='shortE',by.y='l2',all.x = T)
+```
+#Print Summary on the match results
+```{r}
 summary(a2)
-
-# we still have lots of values not macthed
+```
+# we still have lots of values not matched
+# Check how many values are still not matched
+```{r}
 a3<-a2[is.na(a2$Trans),] # the value that are not matching
 str(a3)
-# 126 values needs to be macthed
-# going to manulay do that by pasting the missing values to excel and manuly choose what of the 48 Events fits.
-# Then will constarct R code to populate a mapping table.
-
-# will copy this outpout to excel
+```
+#126 values needs to be matched
+# Going to manually do that by pasting the missing values to excel and manually choose what of the 48 Events fits.
+# Then will contract R code to populate a mapping table.
+# Will copy now this output to excel
+```{r}
 print(a3$origEV)
-
-# copied to excel and manuly mapped.
-# below is the rsult of that mapping
-
-# build the maaping table
+```
+# Copied to excel and manually mapped.
+# Below is the result of that mapping
+# Build the mapping table and map the values
+```{r}
 Trans<-c('Frost/Freeze'
          ,'Coastal Flood'
          ,'Frost/Freeze'
@@ -480,27 +537,26 @@ Orig<-c('AGRICULTURAL FREEZE'
         ,'WINTER WEATHER/MIX'
         ,'WINTRY MIX')
 
-# bild a d.f of the mapping
+# build a d.f of the mapping
 EVTypeMap<-data.frame(Orig,Trans )
 DMGPopulationPart$EVTYPE_Short<-toupper(str_replace_all(DMGPopulationPart$EVTYPE,"[[:punct:][:space:][:digit:]]",""))
 
-# merge with the orignal look up
+# merge with the original look up
 tmpPop<-merge(DMGPopulationPart,d,by.x ='EVTYPE_Short', by.y ='l2',all.x = T)
 # merge the rest with the new mapping
 tmpPop<-merge(tmpPop,EVTypeMap,by.x ='EVTYPE', by.y ='Orig',all.x = T)
 
 
 DMGValuePart$EVTYPE_Short<-toupper(str_replace_all(DMGValuePart$EVTYPE,"[[:punct:][:space:][:digit:]]",""))
-# merge with the orignal look up
+# merge with the original look up
 tmpValue<-merge(DMGValuePart,d,by.x ='EVTYPE_Short', by.y ='l2',all.x = T)
 # merge the rest with the new mapping
 tmpValue<-merge(tmpValue,EVTypeMap,by.x ='EVTYPE', by.y ='Orig',all.x = T)
 
-#Manuly mapping 5 rows that where not mapped(becasue of extra blnks/punct values)
+#Manually mapping 5 rows that where not mapped (because of extra blanks/punct values)
 tmpValue[c(1,3,4,12,121),]$Trans.x= c('High Surf','Thunderstorm Wind','Thunderstorm Wind','Coastal Flood','Thunderstorm Wind')
 
-
-#now make one varibile for the mapped EVTYPE for the two DMG and population d.f
+#now makes one variable for the mapped EVTYPE for the two DMG and population d.f
 for ( i in seq_along(tmpValue$EVTYPE))
 {
         if(is.na(tmpValue[i,]$Trans.x))
@@ -517,16 +573,24 @@ for ( i in seq_along(tmpPop$EVTYPE))
                 tmpPop[i,"FinalEV"]<-tmpPop[i,]$Trans.x
 }
 
-# sumrize by the new EVTYPE and order by the value
+# Summarize by the new EVTYPE and order by the value
 FinalPop<-arrange(summarise(group_by(tmpPop,FinalEV),totalDMGPopulation=sum(totalDMGPopulation)),desc(totalDMGPopulation))
 FinalValue<-arrange(summarise(group_by(tmpValue,FinalEV),totalDMGValue=sum(totalDMGValue)),desc(totalDMGValue))
-# see some stats on the values
+FinalValue$totalDMGValue<-as.double(FinalValue$totalDMGValue)/1000000
+```
+#See some stats on the values
+```{r}
 summary(FinalPop$totalDMGPopulation)
 summary(FinalValue$totalDMGValue)
+```
 
-# the to 10 EVTYPE causing FATALITIES and INJURIES
+# Results:
+
+# The 10 EVTYPE causing FATALITIES and INJURIES
+```{r}
 head(FinalPop,10)
-
-# the to 10 EVTYPE causing the higst damage in M of $ value
-head(FinalValue/1000000,10)
+```
+# The 10 EVTYPE causing the highest damage in Milion of $ value
+```{r}
+head(FinalValue,10)
 ```
