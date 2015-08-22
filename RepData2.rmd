@@ -1,3 +1,4 @@
+```{r}
 library(stringdist)
 library(stringr)
 library(R.utils)
@@ -526,5 +527,6 @@ summary(FinalValue$totalDMGValue)
 # the to 10 EVTYPE causing FATALITIES and INJURIES
 head(FinalPop,10)
 
-# the to 10 EVTYPE causing the higst damage in $ value
-head(FinalValue,10)
+# the to 10 EVTYPE causing the higst damage in M of $ value
+head(FinalValue/1000000,10)
+```
