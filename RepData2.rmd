@@ -12,10 +12,10 @@ We will aim to find the most harmful weather events with respect to population h
 
 #Data processing
 # In general we will d/l and read the raw data into a d.f, filter it for certain years, group it by the EVTYPE, normalize the EVTYPE to the 48 defined in the document, and will summarize population health and economic damage.
-#All the details and code are below
+#All the details and code are below.
 
 
-#We will load the needed libraries and the data set in below code
+#First we will load the needed libraries and the data set in below code:
 
 ```{r}
 library(stringdist)
@@ -65,7 +65,7 @@ str(StromData)
 str(StromData$EVTYPE)
 ```
 #Many values (985), and not the expected 48 per the document.
-#Looking at some values
+#Looking at some of the values
 ```{r}
 head(unique(StromData$EVTYPE),20)
 tail(unique(StromData$EVTYPE),20)
@@ -109,11 +109,11 @@ abline(h=48)
 ```
  
 # Number gets close to the 48 as we are reaching 2011
-# Look at the actual matrix values
+# Look at the actual matrix values:
 ```{r}
 m
 ```
-#Number gets close to the 48 from year 2002
+#Number gets very close to the 48 from year 2002
 #Let's see later how to try and map the EVTYPE to the 48 defined in the document
 
 #Now, Lets look at other variables we will need for the analyze
@@ -148,11 +148,11 @@ head(StromData$PROPDMGEXP)
 # Alphabetical characters used to signify magnitude include “K” for thousands, # “M” for millions, 
 # and “B” for billions." 
 
-#Let's look at the PROPDMG of symbols I can't understand the values
+#Let's look at the PROPDMG on symbols I can't understand the values
 ```{r}
 StromData[StromData$PROPDMGEXP %in% c('+','-','?'),c("PROPDMG","year","PROPDMGEXP")]
 ```
-# only 6 have non zero values in 1994 and 1995 only. We will assume multiplier is 1 for them
+# only 6 have non zero values in 1994 and 1995 only. We will assume multiplier is 1 for them.
 
 # So to summarize I'll assume the following multiplier for the PROPDMGEXP:
 # for null value - just take 1 as the multiplier
@@ -176,7 +176,7 @@ str(StromData$CROPDMGEXP)
 summary(StromData$CROPDMGEXP)
 head(StromData$CROPDMGEXP)
 ```
-#Look at the PROPDMG of symbols I can't understand the values
+#Look at the CROPDMGEXP on symbols I can't understand the values
 ```{r}
 StromData[StromData$CROPDMGEXP =='?',c("CROPDMG","year")]
 ```
@@ -184,17 +184,17 @@ StromData[StromData$CROPDMGEXP =='?',c("CROPDMG","year")]
 
 #I'll assume the same assumptions as the above for PROPDMGEXP
 
-#Add to d.f unified multiplier and calculate the actual PROPDMG and CROPDMG
+#Add to the Storm d.f a unified multiplier and calculate the actual PROPDMG and CROPDMG
 ```{r}
 Expdf<-data.frame(
 EXP=c('','-','?','+',0:9,'B','m','M','k','K','h','H'),
-Multplier=c(1,0,0,0,10 ^0,10 ^1,10 ^2,10 ^3,10 ^4,10 ^5,10 ^6,10 ^7,10 ^8,10 ^9,10 ^9,10 ^6,10 ^6,10 ^3,10 ^3,10 ^2,10^2))
+Multplier=c(1,1,1,1,10 ^0,10 ^1,10 ^2,10 ^3,10 ^4,10 ^5,10 ^6,10 ^7,10 ^8,10 ^9,10 ^9,10 ^6,10 ^6,10 ^3,10 ^3,10 ^2,10^2))
 ```
 # merge with the multiplier
 ```{r cache=TRUE}
 StromData<-merge(StromData,Expdf,by.x ='PROPDMGEXP', by.y='EXP')
 ```
-# Calculate the $ value by summing Property and crops 
+# Calculate the $ value by summing Property and Crops 
 # Calculate the number of people hurt by summing FATALITIES and INJURIES 
 ```{r}
 StromData<-mutate(StromData,DMGValue=PROPDMG*Multplier+CROPDMG*Multplier,Population=FATALITIES+INJURIES)
@@ -282,7 +282,7 @@ str(a3)
 ```
 #126 values needs to be matched
 # Going to manually do that by pasting the missing values to excel and manually choose what of the 48 Events fits.
-# Then will contract R code to populate a mapping table.
+# Then will constract R code to populate a mapping table.
 # Will copy now this output to excel
 ```{r}
 print(a3$origEV)
@@ -576,7 +576,7 @@ for ( i in seq_along(tmpPop$EVTYPE))
 # Summarize by the new EVTYPE and order by the value
 FinalPop<-arrange(summarise(group_by(tmpPop,FinalEV),totalDMGPopulation=sum(totalDMGPopulation)),desc(totalDMGPopulation))
 FinalValue<-arrange(summarise(group_by(tmpValue,FinalEV),totalDMGValue=sum(totalDMGValue)),desc(totalDMGValue))
-FinalValue$totalDMGValue<-as.double(FinalValue$totalDMGValue)/1000000
+FinalValue$totalDMGValue<-as.double(FinalValue$totalDMGValue)/1000000 # Divide by Milion to get the number in Milions
 ```
 #See some stats on the values
 ```{r}
@@ -586,11 +586,11 @@ summary(FinalValue$totalDMGValue)
 
 # Results:
 
-# The 10 EVTYPE causing FATALITIES and INJURIES
+# The top 10 EVTYPE causing FATALITIES and INJURIES
 ```{r}
 head(FinalPop,10)
 ```
-# The 10 EVTYPE causing the highest damage in Milion of $ value
+# The top 10 EVTYPE causing the highest damage in Milion of $ value
 ```{r}
 head(FinalValue,10)
 ```
